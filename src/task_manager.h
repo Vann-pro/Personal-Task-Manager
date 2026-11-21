@@ -30,6 +30,10 @@ class TaskManager {
   std::string get(int id, int64_t now) const;
   std::string query(const std::string& filterJson, int64_t now) const;
   std::string stats(int64_t now) const;
+  // Tugas belum selesai yang deadline-nya dalam windowMs ke depan (urut deadline) + jumlah yang terlambat.
+  std::string upcoming(int64_t now, int64_t windowMs) const;
+  // Jumlah deadline per hari dalam satu bulan. tzOffsetMin = menit zona waktu lokal dari UTC (WIB = 420).
+  std::string calendar(int year, int month, int tzOffsetMin, int64_t now) const;
   // Dokumen JSON untuk penyimpanan dan ekspor (tanpa field hasil hitung).
   std::string serialize(int64_t now) const;
   size_t size() const { return tasks_.size(); }

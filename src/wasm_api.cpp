@@ -26,6 +26,8 @@ PTM_EXPORT const char* ptm_delete(int id) { return ret(ptm::resultToJson(g_manag
 PTM_EXPORT const char* ptm_get(int id, double now) { return ret(g_manager.get(id, T(now))); }
 PTM_EXPORT const char* ptm_query(const char* filter, double now) { return ret(g_manager.query(S(filter), T(now))); }
 PTM_EXPORT const char* ptm_stats(double now) { return ret(g_manager.stats(T(now))); }
+PTM_EXPORT const char* ptm_upcoming(double now, double windowMs) { return ret(g_manager.upcoming(T(now), T(windowMs))); }
+PTM_EXPORT const char* ptm_calendar(int year, int month, int tzOffsetMin, double now) { return ret(g_manager.calendar(year, month, tzOffsetMin, T(now))); }
 PTM_EXPORT const char* ptm_state(double now) { return ret(g_manager.serialize(T(now))); }
 PTM_EXPORT const char* ptm_export(double now) { return ret(g_manager.serialize(T(now))); }
 PTM_EXPORT const char* ptm_import(const char* json, int mode, double now) { return ret(ptm::resultToJson(g_manager.importData(S(json), mode, T(now)))); }

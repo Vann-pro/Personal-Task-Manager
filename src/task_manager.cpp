@@ -360,4 +360,70 @@ std::string TaskManager::stats(int64_t now) const {
   return b;
 }
 
+namespace {
+// Algoritma tanggal sipil (Howard Hinnant): jumlah hari sejak 1970-01-01.
+int64_t daysFromCivil(int y, int m, int d) {
+  y -= m <= 2;
+  int64_t era = (y >= 0 ? y : y - 399) / 400;
+  int64_t yoe = y - era * 400;
+  int64_t doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+  int64_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + doe - 719468;
+}
+}  // namespace
+
+std::string TaskManager::upcoming(int64_t now, int64_t windowMs) const {
+  const int64_t kHour = 3600LL * 1000LL;
+  if (windowMs < kHour) windowMs = kHour;
+  if (windowMs > 30 * kDay) windowMs = 30 * kDay;
+  std::vector<const Task*> v;
+  int overdue = 0;
+  for (const auto& t : tasks_) {
+    if (isOverdue(t, now)) overdue++;
+    if (t.status == Status::Completed || t.deadline <= now || t.deadline > now + windowMs) continue;
+    v.push_back(&t);
+  }
+  std::stable_sort(v.begin(), v.end(), [](const Task* a, const Task* b) {
+    return a->deadline != b->deadline ? a->deadline < b->deadline : a->id < b->id;
+  });
+  std::string s = "{\"ok\":true,\"windowMs\":" + numStr((double)windowMs) + ",\"count\":" + std::to_string(v.size()) +
+                  ",\"overdue\":" + std::to_string(overdue) + ",\"tasks\":[";
+  for (size_t i = 0; i < v.size(); i++) {
+    if (i) s += ",";
+    s += taskJson(*v[i], now, true);
+  }
+  return s + "]}";
+}
+
+std::string TaskManager::calendar(int year, int month, int tzOffsetMin, int64_t now) const {
+  if (year < 1970 || year > 2200 || month < 1 || month > 12 || tzOffsetMin < -840 || tzOffsetMin > 840)
+    return "{\"ok\":false,\"error\":\"parameter kalender tidak valid\"}";
+  int ny = year, nm = month + 1;
+  if (nm == 13) { nm = 1; ny++; }
+  const int64_t s0 = daysFromCivil(year, month, 1);
+  const int n = (int)(daysFromCivil(ny, nm, 1) - s0);
+  const int64_t localStart = s0 * kDay, off = (int64_t)tzOffsetMin * 60000LL;
+  std::vector<int> cnt(n + 1, 0), pend(n + 1, 0), ov(n + 1, 0);
+  for (const auto& t : tasks_) {
+    if (t.deadline <= 0) continue;
+    int64_t local = t.deadline + off;
+    if (local < localStart || local >= localStart + (int64_t)n * kDay) continue;
+    int d = (int)((local - localStart) / kDay) + 1;
+    cnt[d]++;
+    if (t.status != Status::Completed) pend[d]++;
+    if (isOverdue(t, now)) ov[d]++;
+  }
+  std::string o = "{\"ok\":true,\"year\":" + std::to_string(year) + ",\"month\":" + std::to_string(month) +
+                  ",\"daysInMonth\":" + std::to_string(n) + ",\"firstWeekday\":" + std::to_string((int)((s0 + 4) % 7)) + ",\"days\":[";
+  bool first = true;
+  for (int d = 1; d <= n; d++) {
+    if (!cnt[d]) continue;
+    if (!first) o += ",";
+    first = false;
+    o += "{\"day\":" + std::to_string(d) + ",\"count\":" + std::to_string(cnt[d]) + ",\"pending\":" + std::to_string(pend[d]) +
+         ",\"overdue\":" + std::to_string(ov[d]) + "}";
+  }
+  return o + "]}";
+}
+
 }  // namespace ptm
