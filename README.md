@@ -8,7 +8,7 @@ Lingkungan tempat proyek ini dibuat **tidak punya Emscripten dan tidak punya aks
 
 | Bagian | Status |
 |---|---|
-| Logika C++ (prioritas, CRUD, filter, urut, statistik, JSON, validasi impor) | **Sudah diuji** secara native dengan g++ + sanitizer: 74 pemeriksaan lulus (`scripts/test.sh`) |
+| Logika C++ (prioritas, CRUD, filter, urut, statistik, JSON, validasi impor) | **Sudah diuji** secara native dengan g++ + sanitizer: 95 pemeriksaan lulus (`scripts/test.sh`) |
 | Kompilasi ke WebAssembly (`emcc`) | **Belum dijalankan.** Perintah build ditulis tetapi belum pernah dieksekusi |
 | File `.wasm` / `web/wasm/ptm.js` | **Belum ada di ZIP** (tidak mungkin dibuat tanpa Emscripten). Dibuat otomatis oleh langkah di bawah |
 | JavaScript + HTML + CSS | Sintaks sudah diperiksa (`node --check`). **Belum dijalankan di browser** |
@@ -80,7 +80,7 @@ Aturan khusus:
 
 ## Panduan pengujian
 
-**A. Uji C++ otomatis:** `bash scripts/test.sh` (atau `scripts\test.bat`). Harus menampilkan `74 lulus, 0 gagal`.
+**A. Uji C++ otomatis:** `bash scripts/test.sh` (atau `scripts\test.bat`). Harus menampilkan `95 lulus, 0 gagal`.
 
 **B. Uji manual di browser** (setelah build). Centang satu per satu:
 1. Halaman terbuka tanpa banner merah; kartu statistik tampil semua 0.
@@ -101,7 +101,9 @@ Aturan khusus:
 16. **Impor rusak**: ubah file jadi `{"tasks":[{"title":123}]}` atau teks acak. Muncul pesan galat dan data lama utuh.
 17. **Tema**: tombol Tema berganti terang/gelap.
 18. **Responsif**: kecilkan jendela hingga ~360 px (atau mode perangkat di DevTools). Tidak ada scroll horizontal, tombol tetap mudah ditekan.
-19. **Konsol**: buka DevTools > Console; tidak boleh ada galat merah.
+19. **Pengingat**: buat tugas dengan deadline beberapa jam ke depan. Banner kuning muncul. Tekan Aktifkan notifikasi, izinkan; notifikasi muncul sekali.
+20. **Kalender**: tekan Kalender. Tanggal deadline bertanda angka, tanggal terlambat merah; ketuk tanggal untuk melihat tugasnya; tombol panah dan Hari ini berfungsi.
+21. **Konsol**: buka DevTools > Console; tidak boleh ada galat merah.
 
 ## Daftar fitur
 
@@ -109,6 +111,8 @@ Kode sudah ditulis untuk semua fitur wajib. Kolom status menunjukkan apa yang be
 
 | Fitur | Ditulis | Diverifikasi |
 |---|---|---|
+| Pengingat deadline dekat (banner + notifikasi) | Ya | C++ diuji; banner dan notifikasi diuji di Chromium (data contoh, waktu dibekukan) |
+| Kalender deadline per bulan | Ya | C++ diuji (zona waktu, tahun kabisat, lintas tahun); tampilan diuji di Chromium |
 | Dashboard statistik | Ya | Logika C++ diuji; tampilan belum dilihat di browser |
 | CRUD tugas | Ya | Logika C++ diuji; form UI belum |
 | Judul, deskripsi, dibuat, deadline, urgensi, kepentingan, status, prioritas | Ya | C++ diuji |
@@ -126,5 +130,11 @@ Kode sudah ditulis untuk semua fitur wajib. Kolom status menunjukkan apa yang be
 | Simpan otomatis ke LocalStorage | Ya | Belum diuji di browser |
 | Kompilasi WebAssembly | Skrip siap | **Belum pernah dijalankan** |
 | Build otomatis GitHub Pages | Workflow siap | **Belum pernah dijalankan** |
+
+### Pengingat deadline dan kalender
+
+- **Pengingat:** tugas belum selesai yang deadline-nya dalam 24 jam ke depan muncul di banner kuning di atas halaman. Tekan **Aktifkan notifikasi** dan izinkan, maka tiap tugas dikirimi satu notifikasi (tidak berulang untuk tugas dan deadline yang sama).
+- **Batasan penting:** notifikasi hanya muncul selama aplikasi terbuka di browser (tab boleh di latar belakang). Tanpa server, versi web tidak bisa menjamin notifikasi saat browser tertutup. Di iPhone, notifikasi web umumnya butuh aplikasi ditambahkan ke layar utama. Notifikasi terjadwal yang tetap muncul saat tertutup butuh versi APK (rencana berikutnya).
+- **Kalender:** tombol **Kalender** menampilkan satu bulan. Angka pada tanggal = jumlah tugas ber-deadline hari itu (merah jika ada yang terlambat). Ketuk tanggal untuk melihat tugasnya; bisa diubah statusnya dari sana.
 
 Belum ada: kategori/label, tugas berulang, notifikasi pengingat, undo, uji otomatis untuk sisi JavaScript.

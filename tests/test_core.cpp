@@ -114,6 +114,41 @@ int main() {
   CHECK(tm2.importData("[{\"title\":\"x\"}]", 1, NOW).ok && tm2.size() == 1);  // ganti
   CHECK(tm2.remove(1).ok && tm2.size() == 0);
 
+
+  // --- Pengingat deadline & kalender ---
+  {
+    auto mk = [&](TaskManager& m, int64_t dl, const char* st) {
+      std::string j = "{\"title\":\"t\",\"status\":\"" + std::string(st) + "\",\"deadline\":" + std::to_string(dl) + "}";
+      return m.add(j, NOW).ok;
+    };
+    TaskManager c;
+    CHECK(mk(c, NOW + 2 * H, "todo"));          // A: 15 Jan 10:00Z, dekat
+    CHECK(mk(c, NOW + 30 * H, "todo"));         // B: 16 Jan 14:00Z, di luar 24 jam
+    CHECK(mk(c, NOW - D, "todo"));              // C: 14 Jan, terlambat
+    CHECK(mk(c, NOW + 3 * H, "completed"));     // D: selesai, tidak diingatkan
+    CHECK(c.add("{\"title\":\"tanpa deadline\"}", NOW).ok);
+    CHECK(mk(c, NOW + 3 * D, "inprogress"));    // F: 18 Jan
+    CHECK(mk(c, NOW + 16 * H, "todo"));         // G: 16 Jan 00:00Z
+    std::string u = c.upcoming(NOW, 24 * H);
+    CHECK(has(u, "\"count\":2") && has(u, "\"overdue\":1"));  // A dan G
+    CHECK(u.find("\"id\":1") < u.find("\"id\":7"));            // urut deadline
+    CHECK(!has(u, "\"id\":4"));                                 // yang selesai tidak ikut
+    CHECK(has(c.upcoming(NOW, 48 * H), "\"count\":3"));         // jendela diperlebar: A, B, G
+    std::string cal = c.calendar(2027, 1, 0, NOW);
+    CHECK(has(cal, "\"daysInMonth\":31") && has(cal, "\"firstWeekday\":5"));
+    CHECK(has(cal, "{\"day\":14,\"count\":1,\"pending\":1,\"overdue\":1}"));
+    CHECK(has(cal, "{\"day\":15,\"count\":2,\"pending\":1,\"overdue\":0}"));  // A + D(selesai)
+    CHECK(has(cal, "{\"day\":16,\"count\":2,\"pending\":2,\"overdue\":0}"));  // B + G
+    CHECK(has(cal, "{\"day\":18,\"count\":1"));
+    CHECK(!has(cal, "\"day\":17"));
+    // zona waktu: UTC-8 menggeser G (16 Jan 00:00Z) ke 15 Jan
+    std::string calW = c.calendar(2027, 1, -480, NOW);
+    CHECK(has(calW, "{\"day\":15,\"count\":3,\"pending\":2,\"overdue\":0}"));
+    CHECK(has(c.calendar(2027, 2, 0, NOW), "\"daysInMonth\":28") && has(c.calendar(2028, 2, 0, NOW), "\"daysInMonth\":29"));
+    CHECK(has(c.calendar(2027, 13, 0, NOW), "\"ok\":false") && has(c.calendar(1900, 1, 0, NOW), "\"ok\":false"));
+    CHECK(has(c.calendar(2027, 12, 0, NOW), "\"ok\":true"));  // lintas tahun
+  }
+
   // --- Lapisan C (API WASM) ---
   CHECK(has(ptm_load("", NOW), "\"ok\":true"));
   CHECK(has(ptm_add("{\"title\":\"via api\"}", NOW), "\"id\":1"));
